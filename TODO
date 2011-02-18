@@ -1,0 +1,4 @@
+- Switch to using PEAR MIME classes for emailed backups
+- Make a web interface
+- Add FTP method to move backups to a different machine
+- Make an installer

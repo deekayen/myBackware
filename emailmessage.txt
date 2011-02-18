@@ -1,0 +1,352 @@
+Attached is a MySQL database dump. It contains all information
+necessary to re-create a MySQL database in the event of a complete
+loss. Of course, the attached file isn't much good if nobody knows
+or can remember how to transform it from its compressed and encrypted
+format back to something useful. What follows is background
+information, instructions, and examples.
+
+The database was dumped to a text file using the command:
+
+mysqldump -A -l -u $user -p$password > $directory$filename
+
+The correct values for processing are stored in the variables
+$user, $password, $directory, and $filename. Each dump has a
+filename in the date format YYYYMMDDHHMMSS, with .mysql appended
+as the file extension to identify the file as a mysql dump file.
+
+The dump file is then compressed using the bzip2 compression format.
+Bzip2 is generally provides 10-15% better compression than gzip and
+15-25% better compression than zip. Since bandwidth is metered with
+most any internet service provider hosting servers, bzip2 is being
+used even though the popular Windows archiver WinZip has chosen not
+to implement .bz2 file (de)compression. Other (de)compression
+utilities are available for Windows which support bzip2, including
+PowerArchiver (http://www.powerarchiver.com/) and WinRAR
+(http://www.rarlab.com/). Bzip2 is installed by default on most
+Linux distributions, including Redhat and Mandrake.
+
+The attached database information is also encrypted using GnuPG,
+downloaded from http://www.gnupg.org/. The server uses a public
+PGP encryption key to encrypt the backup file. The file can only
+be decrypted using a private key that was created at the same time
+as the public key to fit with the public key to make a key pair.
+The strength of PGP style encryption produced by GPG assures that
+only the possessor of the matching private key can read the contents
+of the file. This deters several types of attacks from malicious
+people on the Internet attempting both passive and active attacks.
+The objective is not to provide data integrity, but rather data
+confidentiality - anyone can encrypt a file to send to the possessor
+of the private key using the public key, but the public key
+can not decrypt a file encrypted with the public key.
+
+A properly secured and maintained server should be considered a
+relatively difficult place to steal information stored in a
+database, however when transferring data over the Internet, an email
+might pass through as many as forty different servers to reach its
+destination. Any of those server administrators or people with
+access to parts of the network that provide Internet to those
+servers are able to read email transmissions, intercept them, copy
+and modify their contents, replay them over the network, and
+masquerade as the sender. In an academic database, it would give
+the attacker access to user passwords, performance scores, and
+other information that likely shouldn't be in the hands of random
+people. PGP is a well known standard for email content encryption
+and is quite possibly the most secure encryption in existence.
+
+So how does this whole system work? A cron job runs regularly,
+executing a PHP script that creates the MySQL dump file, compresses
+and encrypts it, and mails it to a list of recipients. A GPG key
+pair was created in Linux.
+
+    bash-2.05$ gpg --gen-key
+    gpg (GnuPG) 1.2.2; Copyright (C) 2003 Free Software Foundation, Inc.
+    This program comes with ABSOLUTELY NO WARRANTY.
+    This is free software, and you are welcome to redistribute it
+    under certain conditions. See the file COPYING for details.
+ 
+    Please select what kind of key you want:
+       (1) DSA and ElGamal (default)
+       (2) DSA (sign only)
+       (5) RSA (sign only)
+    Your selection? 1
+    DSA keypair will have 1024 bits.
+    About to generate a new ELG-E keypair.
+                  minimum keysize is  768 bits
+                  default keysize is 1024 bits
+        highest suggested keysize is 2048 bits
+    What keysize do you want? (1024)
+    Requested keysize is 1024 bits
+    Please specify how long the key should be valid.
+             0 = key does not expire
+          <n>  = key expires in n days
+          <n>w = key expires in n weeks
+          <n>m = key expires in n months
+          <n>y = key expires in n years
+    Key is valid for? (0)
+    Key does not expire at all
+    Is this correct (y/n)? y
+
+    You need a User-ID to identify your key; the software constructs the user id
+    from Real Name, Comment and Email Address in this form:
+        "Heinrich Heine (Der Dichter) <heinrichh@duesseldorf.de>"
+ 
+    Real name: Advanced Automation Inc
+    Email address: secure@advancedautomationinc.com
+    Comment:
+    You selected this USER-ID:
+        "Advanced Automation Inc <secure@advancedautomationinc.com>"
+ 
+    Change (N)ame, (C)omment, (E)mail or (O)kay/(Q)uit? o
+    You need a Passphrase to protect your secret key.
+ 
+    Enter passphrase:
+    gpg:
+
+A long password was entered. Often the weakest part of encryption
+is the password, not the method of encryption chosen. In Windows,
+the process is very similar. Download the GnuPG distribution file
+from http://www.gnupg.org/. Unzip it to c:\GnuPG and open the
+gnupg-w32.reg file to merge it with the registry. In the Start
+menu, select Run. Type 'command' in the Open box and hit OK for
+Windows 95/98/ME, or type 'cmd' in the Open box and hit OK for
+Windows NT/2000/XP or newer. The GPG for Windows output will be
+identical to Linux.
+
+    Microsoft Windows XP [Version 5.1.2600]
+    (C) Copyright 1985-2001 Microsoft Corp.
+
+    C:\Documents and Settings\deekayen>cd \
+
+    C:\>cd gnupg
+    
+    C:\>gpg --gen-key
+
+Then you'll need to create a copy of the public key to load to
+the server for encrypting backups.
+
+    C:\>gpg -ao secureadvancedautomation.gpg --export secure@advancedautomationinc.com
+
+The private key needs to be absolutely secure. If it is compromised,
+an attacker can brute force search for the password rather than
+having to brute force the 1024 bits of randomness that would unlock
+the encryption created by the public key. It would take more
+processing power to brute force attack the 1024 bits of randomness
+in the private key than is estimated to exist in the next billion
+years, however finding the password to unlock the private key
+if the private key is in the attackers possession could take a
+matter of hours. For that reason, the private key should not be
+transmitted over the insecure pipes of the Internet. With that in
+mind, export a copy of the private key:
+
+    C:\>gpg -ao secureadvancedautomation-private.gpg --export-secret-keys secure@advancedautomationinc.com
+
+Copy the resulting file to somewhere secure as a backup. Burning it
+to a CD and postal mailing it to another trusted person in the
+organization who also receives a copy of the backup file and/or might
+one day need to recover the backup.
+
+Upload the GPG public key to the server with the database to backup.
+The following will get GPG prepped:
+
+    bash-2.05$ gpg --import advancedautomationinc.gpg
+    bash-2.05$ gpg --edit-key secure@advancedautomationinc.com
+    gpg (GnuPG) 1.0.6; Copyright (C) 2001 Free Software Foundation, Inc.
+    This program comes with ABSOLUTELY NO WARRANTY.
+    This is free software, and you are welcome to redistribute it
+    under certain conditions. See the file COPYING for details.
+
+    gpg: Warning: using insecure memory!
+
+    pub  1024D/9F888EF1  created: 2003-08-02 expires: never      trust: -/q
+    sub  1024g/E5DF491E  created: 2003-08-02 expires: never
+    (1). Advanced Automation Inc <secure@advancedautomationinc.com>
+ 
+    Command> trust
+    pub  1024D/9F888EF1  created: 2003-08-02 expires: never      trust: -/q
+    sub  1024g/E5DF491E  created: 2003-08-02 expires: never
+    (1). Advanced Automation Inc <secure@advancedautomationinc.com>
+
+    Please decide how far you trust this user to correctly
+    verify other users' keys (by looking at passports,
+    checking fingerprints from different sources...)?
+ 
+     1 = Don't know
+     2 = I do NOT trust
+     3 = I trust marginally
+     4 = I trust fully
+     s = please show me more information
+     m = back to the main menu
+
+    Your decision? 4
+                 
+    pub  1024D/9F888EF1  created: 2003-08-02 expires: never      trust: f/q
+    sub  1024g/E5DF491E  created: 2003-08-02 expires: never
+    (1). Advanced Automation Inc <secure@advancedautomationinc.com>
+ 
+    Command> quit
+    bash-2.05$ gpg --list-key --with-colons
+    /home/advance/.gnupg/pubring.gpg
+    --------------------------------
+    pub:u:1024:17:845E17589F888EF1:2003-08-02::59:f:Advanced Automation Inc <secure@advancedautomationinc.com>::scESC:
+    sub:u:1024:16:2CFC2116E5DF491E:2003-08-02::59::::e:
+
+Here you want to write down the 2CFC2116E5DF491E segment so it can
+be added to the list of trusted keys. Add the following lines to
+'~/.gnupg/options'.
+
+        trusted-key 2CFC2116E5DF491E
+        no-secmem-warning
+
+The regular backup script will execute the following:
+
+    gpg -qe -o $directory$filename.gpg -r $key $directory$filename
+    
+Let's say that the worst has happened and you need to but the
+backup to use. Find where you stored your public and private keys.
+Copy the keys and the backup file to your GnuPG directory.
+Follow along using the command window from Run in the Start menu
+as aforementioned.
+
+    Microsoft Windows XP [Version 5.1.2600]
+    (C) Copyright 1985-2001 Microsoft Corp.
+
+    C:\Documents and Settings\deekayen>cd \
+
+    C:\>cd gnupg
+
+    C:\GnuPG>dir
+     Volume in drive C has no label.
+     Volume Serial Number is 7057-682D
+
+     Directory of C:\GnuPG
+
+    08/02/2003  02:15 AM    <DIR>          .
+    08/02/2003  02:15 AM    <DIR>          ..
+    05/01/2003  05:29 PM           111,982 ca.mo
+    05/01/2003  05:29 PM            18,332 COPYING
+    05/01/2003  05:29 PM           109,595 cs.mo
+    05/01/2003  05:29 PM            27,444 da.mo
+    05/01/2003  05:29 PM           118,517 de.mo
+    08/02/2003  02:11 AM           554,511 20030802054512.mysql.bz2.gpg
+    05/01/2003  05:29 PM           113,734 el.mo
+    05/01/2003  05:29 PM            82,974 eo.mo
+    05/01/2003  05:29 PM           110,986 es.mo
+    05/01/2003  05:29 PM           106,893 et.mo
+    05/01/2003  05:29 PM            55,430 FAQ
+    05/01/2003  05:29 PM           109,533 fi.mo
+    05/01/2003  05:29 PM           113,967 fr.mo
+    05/01/2003  05:29 PM           111,663 gl.mo
+    05/01/2003  05:29 PM               385 gnupg-w32.reg
+    05/01/2003  05:29 PM               664 gnupg.man
+    05/01/2003  05:29 PM           610,304 gpg.exe
+    05/01/2003  05:29 PM            86,001 gpg.man
+    05/01/2003  05:29 PM            13,824 gpgkeys_ldap.exe
+    05/01/2003  05:29 PM            47,616 gpgsplit.exe
+    05/01/2003  05:29 PM           267,264 gpgv.exe
+    05/01/2003  05:29 PM             3,976 gpgv.man
+    05/01/2003  05:29 PM           111,385 hu.mo
+    05/01/2003  05:29 PM           108,176 id.mo
+    05/01/2003  05:29 PM           111,043 it.mo
+    05/01/2003  05:29 PM            95,731 ja.mo
+    05/01/2003  05:29 PM            59,231 nl.mo
+    05/01/2003  05:29 PM           104,625 pl.mo
+    05/01/2003  05:29 PM           103,755 pt.mo
+    05/01/2003  05:29 PM            57,470 pt_BR.mo
+    08/02/2003  02:13 AM                 0 pubring.bak
+    08/02/2003  02:13 AM               926 pubring.gpg
+    05/01/2003  05:29 PM            27,124 README
+    05/01/2003  05:29 PM             3,993 README.W32
+    08/02/2003  02:15 AM             1,064 secring.gpg
+    08/02/2003  02:14 AM             1,545 secureadvancedautomationinc-private.gpg
+    08/02/2003  02:11 AM             1,357 secureadvancedautomationinc.gpg
+    05/01/2003  05:29 PM           109,798 sk.mo
+    05/01/2003  05:29 PM            90,963 sv.mo
+    05/01/2003  05:29 PM           110,534 tr.mo
+    08/02/2003  02:17 AM             1,240 trustdb.gpg
+    05/01/2003  05:29 PM            94,979 zh_TW.mo
+                  42 File(s)      3,970,534 bytes
+                   2 Dir(s)   1,187,332,096 bytes free
+
+    C:\GnuPG>gpg --import secureadvancedautomationinc.gpg
+    gpg: keyring `C:/GnuPG\secring.gpg' created
+    gpg: keyring `C:/GnuPG\pubring.gpg' created
+    gpg: C:/GnuPG\trustdb.gpg: trustdb created
+    gpg: key 9F888EF1: public key "Advanced Automation Inc <secure@advancedautomationinc.com>" imported
+    gpg: Total number processed: 1
+    gpg:               imported: 1
+
+    C:\GnuPG>gpg --import secureadvancedautomationinc-private.gpg
+    gpg: key 9F888EF1: secret key imported
+    gpg: Total number processed: 1
+    gpg:       secret keys read: 1
+    gpg:   secret keys imported: 1
+
+    C:\GnuPG>gpg --edit-key secure@advancedautomationinc.com
+    gpg (GnuPG) 1.2.2; Copyright (C) 2003 Free Software Foundation, Inc.
+    This program comes with ABSOLUTELY NO WARRANTY.
+    This is free software, and you are welcome to redistribute it
+    under certain conditions. See the file COPYING for details.
+
+    Secret key is available.
+
+    gpg: checking the trustdb
+    gpg: no ultimately trusted keys found
+    pub  1024D/9F888EF1  created: 2003-08-02 expires: never      trust: -/-
+    sub  1024g/E5DF491E  created: 2003-08-02 expires: never
+    (1). Advanced Automation Inc <secure@advancedautomationinc.com>
+
+    Command> trust
+    pub  1024D/9F888EF1  created: 2003-08-02 expires: never      trust: -/-
+    sub  1024g/E5DF491E  created: 2003-08-02 expires: never
+    (1). Advanced Automation Inc <secure@advancedautomationinc.com>
+
+    Please decide how far you trust this user to correctly
+    verify other users' keys (by looking at passports,
+    checking fingerprints from different sources...)?
+
+     1 = Don't know
+     2 = I do NOT trust
+     3 = I trust marginally
+     4 = I trust fully
+     5 = I trust ultimately
+     m = back to the main menu
+
+    Your decision? 5
+    Do you really want to set this key to ultimate trust? yes
+
+    pub  1024D/9F888EF1  created: 2003-08-02 expires: never      trust: u/-
+    sub  1024g/E5DF491E  created: 2003-08-02 expires: never
+    (1). Advanced Automation Inc <secure@advancedautomationinc.com>
+    Please note that the shown key validity is not necessarily correct
+    unless you restart the program.
+
+    Command> quit
+
+    C:\GnuPG>gpg --decrypt 20030802054512.mysql.bz2.gpg > 20030802054512.mysql.bz2
+
+    You need a passphrase to unlock the secret key for
+    user: "Advanced Automation Inc <secure@advancedautomationinc.com>"
+    1024-bit ELG-E key, ID E5DF491E, created 2003-08-02 (main key ID 9F888EF1)
+
+    gpg: encrypted with 1024-bit ELG-E key, ID E5DF491E, created 2003-08-02
+          "Advanced Automation Inc <secure@advancedautomationinc.com>"
+
+    C:\GnuPG>
+
+Now you should have the compressed database file. If you want to decompress
+it in Linux, upload it and type the following:
+
+    bash-2.05$ bunzip2 20030802054512.mysql.bz2
+    
+The result will be 20030802054512.mysql. If you know you dumped
+the original backup as the root MySQL user, you might need to edit
+the MySQL dump backup to remove my mysql database to prevent
+overwriting anything that might be version specific in your
+replacement installation of MySQL. In most cases, you should just
+be able to go from the decompression to importing to MySQL by
+doing:
+
+    bash-2.05$ mysql -u username -ppassword < 20030802054512.mysql
+
+Other methods exists for importing data into MySQL.
+See http://mysql.com/ if you're interested in reading more.
